@@ -2,6 +2,7 @@
 
 ## what
 
+### Component Relationships
 
 ```mermaid
 sequenceDiagram
@@ -9,7 +10,11 @@ sequenceDiagram
     Nginx->>+Datadog: Collects logs
     Nginx->>+Mock: reverse proxy
     Mock->>+Nginx: expose mock endpoints
+```
 
+### Workflow
+
+```mermaid
 journey
     title Workflow Overview
     section Generate Log
