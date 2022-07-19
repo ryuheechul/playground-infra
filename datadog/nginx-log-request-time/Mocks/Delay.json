@@ -1,0 +1,13 @@
+{
+  "request": {
+    "method": "GET",
+    "route": "simulate"
+  },
+  "response": {
+    "status": "<#= Faker.PickRandom(new[] { 200, 200, 200, 200, 403, 503 }) #>",
+    "delay": "<#= Faker.Random.Number(50, 2000) #>",
+    "body": {
+      "response": "delayed response"
+    }
+  }
+}

@@ -1,0 +1,12 @@
+{
+  "request": {
+    "method": "GET",
+    "route": "ping"
+  },
+  "response": {
+    "status": "OK",
+    "body": {
+      "response": "pong"
+    }
+  }
+}

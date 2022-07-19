@@ -1,0 +1,23 @@
+version: '3'
+services:
+  mock:
+    image: natenho/mockaco:1.7.4
+    volumes:
+      - ./Mocks:/app/Mocks
+    ports:
+      - 5000
+
+  reverse-proxy:
+    labels:
+      com.datadoghq.ad.logs: '[{"source": "nginx", "service": "reverse-proxy"}]'
+    image: nginx:1.23
+    ports:
+      - 8080:80
+    volumes:
+      - ./nginx/nginx.conf:/etc/nginx/nginx.conf
+      - ./nginx/conf.d/default.conf:/etc/nginx/conf.d/default.conf
+  requester:
+    build: ./synthetic-requests
+    environment:
+      - FULL_URL_TO_TEST=http://reverse-proxy:80
+  # TODO: add datadog agent
