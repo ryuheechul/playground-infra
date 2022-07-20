@@ -1,7 +1,9 @@
 # aws/api-gateway/forwarded-header
 This is to prove/verify that [HTTP API Gateway](https://docs.aws.amazon.com/apigateway/latest/developerguide/http-api-develop.html#http-api-examples) does set [`Forwarded` header](https://developer.mozilla.org/en-US/docs/Web/HTTP/Headers/Forwarded) not [`X-Forwarded-For`](https://developer.mozilla.org/en-US/docs/Web/HTTP/Headers/X-Forwarded-For).
 
-_but somehow [Rest API Gateway](https://docs.aws.amazon.com/apigateway/latest/developerguide/rest-api-develop.html) seems to work differently than above - this is testable by changing to use `RestApi` at [forwarded-header-stack.ts](./cdk/forwarded-header/lib/forwarded-header-stack.ts)_
+_but somehow [Rest API Gateway seems to work differently than above](https://docs.aws.amazon.com/apigateway/latest/developerguide/rest-api-develop.html) - this is testable by changing to use `RestApi` at [forwarded-header-stack.ts](./cdk/forwarded-header/lib/forwarded-header-stack.ts)_
+
+_not to mention [Application Load Balancers supports `X-Forwarded-For`](https://docs.aws.amazon.com/elasticloadbalancing/latest/application/x-forwarded-headers.html#x-forwarded-for) not `Forwarded`..._
 
 ## Prerequisites
 [Install Earthly and its pre-requisites](https://earthly.dev/get-earthly)
