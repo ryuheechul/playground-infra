@@ -5,6 +5,8 @@ _but somehow [Rest API Gateway seems to work differently than above](https://doc
 
 _not to mention [Application Load Balancers supports `X-Forwarded-For`](https://docs.aws.amazon.com/elasticloadbalancing/latest/application/x-forwarded-headers.html#x-forwarded-for) not `Forwarded`..._
 
+Just leanred that these findings above are [already discovered and explained well by someone](https://medium.com/@lancers/amazon-api-gateway-explaining-http-proxy-in-http-api-3ea0afe6b03c#:~:text=Unfortunately%2C%20there%20is%20downside.%20Between%20API%20Gateway%20and%20your%20backend%2C%20if%20there%20is%20an%20intermediary%20(e.g.%20LoadBalancer)%20which%20does%20not%20understand%20Via%20header%2C%20it%20will%20end%20up%20with%20adding%20XFF%20header.).
+
 ## Prerequisites
 [Install Earthly and its pre-requisites](https://earthly.dev/get-earthly)
 
