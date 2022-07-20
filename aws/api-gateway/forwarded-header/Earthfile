@@ -1,0 +1,92 @@
+VERSION 0.6
+
+tester:
+  FROM nixery.dev/shell/gnumake/git/curl/jq
+  ENV GATEWAY_URL
+  WORKDIR /opt/test
+
+  COPY Makefile .
+
+  CMD ["make", "test"]
+
+cdk:
+  FROM node:16-bullseye-slim
+  WORKDIR /opt/app
+
+  RUN npm i -g aws-cdk
+
+  ENTRYPOINT ["cdk"]
+
+# inspired by https://github.com/earthly/earthly/issues/1221#issuecomment-925390672
+hack-aws-config:
+  LOCALLY
+  RUN mkdir -p ./.hack-tmp
+  RUN cp -r ~/.aws ./.hack-tmp/aws
+  SAVE ARTIFACT ./.hack-tmp/aws aws
+  RUN rm -rf ./.hack-tmp
+
+npm-cache:
+  FROM node:16-bullseye-slim
+  WORKDIR /build-node-modules
+
+  COPY cdk/forwarded-header/package.json cdk/forwarded-header/package-lock.json ./
+
+  RUN npm install
+
+  # if bumping up to a new format is desired, un comment this and run `earthly +npm-cache` to produce new lock file
+  # SAVE ARTIFACT package-lock.json AS LOCAL ./new-package-lock.json
+  SAVE ARTIFACT node_modules node_modules
+
+deploy-prep:
+  FROM earthly/dind:alpine
+  WORKDIR /workdir
+
+  COPY --dir +hack-aws-config/aws /root/.aws
+  COPY docker-compose.cdk.yml .
+  COPY --dir cdk ./
+  COPY --dir +npm-cache/node_modules ./cdk/forwarded-header/
+
+deploy-prep-w-identity:
+  FROM +deploy-prep
+
+  # currently amazon/aws-cli is only being used for printing to show which identity is being used
+  WITH DOCKER --pull amazon/aws-cli:2.7.2
+    RUN --no-cache \
+      docker-compose -f docker-compose.cdk.yml run --rm aws sts get-caller-identity
+  END
+
+diff:
+  FROM +deploy-prep-w-identity
+
+  WITH DOCKER --load earthly_cdk:latest=+cdk
+    RUN --no-cache \
+      docker-compose -f docker-compose.cdk.yml run --rm cdk diff
+  END
+
+deploy:
+  FROM +deploy-prep-w-identity
+
+  WITH DOCKER --load earthly_cdk:latest=+cdk
+    RUN docker-compose -f docker-compose.cdk.yml run --entrypoint npm --rm cdk -- install
+  END
+
+  WITH DOCKER --load earthly_cdk:latest=+cdk
+    RUN --no-cache \
+      docker-compose -f docker-compose.cdk.yml run --rm \
+      cdk deploy --require-approval=never --outputs-file=../outputs.json
+  END
+
+  RUN cat cdk/outputs.json | jq -r '.[].ApiEndpoint' > endpoint-url.txt
+
+  # run tests against the deployed gateway
+  WITH DOCKER --load tester:latest=+tester
+    RUN --no-cache docker run --network=host -e GATEWAY_URL=$(cat endpoint-url.txt) tester
+  END
+
+destroy:
+  FROM +deploy-prep-w-identity
+
+  WITH DOCKER --load earthly_cdk:latest=+cdk
+    RUN --no-cache \
+      docker-compose -f docker-compose.cdk.yml run --rm cdk destroy --force
+  END

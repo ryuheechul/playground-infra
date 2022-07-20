@@ -1,0 +1,13 @@
+version: '3'
+services:
+  aws:
+    image: amazon/aws-cli:2.7.2
+    volumes:
+    - ~/.aws:/root/.aws
+  cdk:
+    # image will be built by ./Earthfile
+    image: earthly_cdk:latest
+    working_dir: /opt/app/cdk/forwarded-header
+    volumes:
+    - ~/.aws:/root/.aws
+    - ./cdk:/opt/app/cdk:rw
