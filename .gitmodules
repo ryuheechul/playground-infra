@@ -1,0 +1,3 @@
+[submodule "aws/eb-sqs-imdsv2"]
+	path = aws/eb-sqs-imdsv2
+	url = https://github.com/ryuheechul/eb-sqs-imdsv2
