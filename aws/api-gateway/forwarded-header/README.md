@@ -29,3 +29,7 @@ index a995786..f446eeb 100644
    "url": "https://postman-echo.com/get/"
  }
 ```
+
+## Clean Up
+
+`make destroy`
