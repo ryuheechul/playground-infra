@@ -1,0 +1,136 @@
+VERSION 0.6
+
+tester:
+  FROM nixery.dev/shell/gnumake/git/curl/jq
+  ENV GATEWAY_URL
+  WORKDIR /opt/test
+
+  COPY Makefile .
+
+  CMD ["make", "test"]
+
+node:
+  FROM node:18-bullseye-slim
+
+cdk:
+  FROM +node
+  ARG TARGETARCH
+  WORKDIR /opt/app
+
+  RUN mkdir -p /asset-input
+  RUN apt update && apt install -y curl
+  RUN npm i -g aws-cdk
+
+  ENV DOCKERVERSION=20.10.17
+
+  RUN curl -fsSLO https://download.docker.com/linux/static/stable/$(printenv TARGETARCH | sed s/arm64/aarch64/)/docker-${DOCKERVERSION}.tgz \
+    && tar xzvf docker-${DOCKERVERSION}.tgz --strip 1 \
+    -C /usr/local/bin docker/docker \
+    && rm docker-${DOCKERVERSION}.tgz
+
+  ENTRYPOINT ["cdk"]
+
+# inspired by https://github.com/earthly/earthly/issues/1221#issuecomment-925390672
+hack-aws-config:
+  LOCALLY
+  RUN mkdir -p ./.hack-tmp
+  RUN cp -r ~/.aws ./.hack-tmp/aws
+  SAVE ARTIFACT ./.hack-tmp/aws aws
+  RUN rm -rf ./.hack-tmp
+
+# use this to fix `package-lock.json` either for local use or to be used for +npm-cache
+npm-install-local:
+  FROM +node
+  WORKDIR /build-node-modules
+
+  COPY cdk/one-off-tasks/package.json cdk/one-off-tasks/package-lock.json ./
+
+  RUN npm install
+
+  # if bumping up to a new format is desired, uncomment this and run `earthly +npm-cache` to produce new lock file
+  SAVE ARTIFACT ./node_modules AS LOCAL cdk/one-off-tasks/node_modules
+  SAVE ARTIFACT ./package-lock.json AS LOCAL cdk/one-off-tasks/package-lock.json
+
+npm-cache:
+  FROM +node
+  WORKDIR /build-node-modules
+
+  COPY cdk/one-off-tasks/package.json cdk/one-off-tasks/package-lock.json ./
+
+  RUN npm install
+
+  # if bumping up to a new format is desired, uncomment this and run `earthly +npm-cache` to produce new lock file
+  SAVE ARTIFACT ./node_modules node_modules
+  SAVE ARTIFACT ./package-lock.json package-lock.json
+
+  # below would not work for some reason hence the +npm-install-local (when it's used from other builds)
+  # for this reason - https://docs.earthly.dev/docs/earthfile#save-artifact:~:text=Note%20that%20local%20artifacts%20are%20only%20produced%20by%20targets%20that%20are%20run%20direcrtly%20with%20earthly
+  # SAVE ARTIFACT ./package-lock.json AS LOCAL cdk/one-off-tasks/package-lock.json
+
+deploy-prep:
+  FROM earthly/dind:alpine
+
+  # it's important to match this directory to the one in ./docker-compose.cdk.yml in this instance
+  # because of how `public.ecr.aws/sam/build-nodejs16.x` works
+  WORKDIR /opt/app
+
+  COPY --dir +hack-aws-config/aws /root/.aws
+  COPY docker-compose.cdk.yml .
+  COPY --dir cdk ./
+  COPY --dir lambda ./
+  COPY --dir +npm-cache/node_modules ./cdk/one-off-tasks/
+  COPY +npm-cache/package-lock.json ./cdk/one-off-tasks/
+
+deploy-prep-w-identity:
+  FROM +deploy-prep
+
+  # currently amazon/aws-cli is only being used for printing to show which identity is being used
+  WITH DOCKER --pull amazon/aws-cli:2.7.24
+    RUN --no-cache \
+      docker-compose -f docker-compose.cdk.yml run --rm aws sts get-caller-identity
+  END
+
+  WITH DOCKER --load earthly_cdk:latest=+cdk
+    RUN docker-compose -f docker-compose.cdk.yml run --entrypoint npm --rm cdk -- install
+  END
+
+diff:
+  FROM +deploy-prep-w-identity
+
+  WITH DOCKER --load earthly_cdk:latest=+cdk --pull public.ecr.aws/sam/build-nodejs16.x
+    RUN --no-cache \
+      docker-compose -f docker-compose.cdk.yml run --rm cdk diff
+  END
+
+deploy:
+  FROM +deploy-prep-w-identity
+
+  WITH DOCKER --load earthly_cdk:latest=+cdk --pull public.ecr.aws/sam/build-nodejs16.x
+    RUN --no-cache \
+      docker-compose -f docker-compose.cdk.yml run --rm cdk deploy \
+        --require-approval=never --outputs-file=../outputs.json
+  END
+
+  RUN cat cdk/outputs.json | jq -r '.[].ApiEndpoint' > endpoint-url.txt
+  RUN cat cdk/outputs.json | jq -r '.[].ApiKeyId' > gw-api-key-id.txt
+
+  WITH DOCKER --pull amazon/aws-cli:2.7.24
+    RUN --no-cache \
+      docker-compose -f docker-compose.cdk.yml run --rm aws apigateway get-api-key --include-value --api-key=$(cat gw-api-key-id.txt) | jq -r '.value' > gw-api-token.txt
+  END
+
+  # run tests against the deployed gateway
+  WITH DOCKER --load tester:latest=+tester
+    RUN --no-cache docker run --network=host \
+      -e GATEWAY_URL=$(cat endpoint-url.txt) \
+      -e GW_API_TOKEN=$(cat gw-api-token.txt) \
+      tester
+  END
+
+destroy:
+  FROM +deploy-prep-w-identity
+
+  WITH DOCKER --load earthly_cdk:latest=+cdk
+    RUN --no-cache \
+      docker-compose -f docker-compose.cdk.yml run --rm cdk destroy --force
+  END

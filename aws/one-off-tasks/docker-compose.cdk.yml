@@ -1,0 +1,15 @@
+version: '3'
+services:
+  aws:
+    image: amazon/aws-cli:2.7.24
+    volumes:
+    - ~/.aws:/root/.aws
+  cdk:
+    # image will be built by ./Earthfile
+    image: earthly_cdk:latest
+    working_dir: /opt/app/cdk/one-off-tasks
+    volumes:
+    - ~/.aws:/root/.aws
+    - ./cdk:/opt/app/cdk:rw
+    - ./lambda:/opt/app/lambda:rw
+    - /var/run/docker.sock:/var/run/docker.sock
