@@ -8,7 +8,7 @@ test:
 	curl --request PUT \
 		--header "x-api-key: $(GW_API_TOKEN)" \
 		--header 'Content-Type: application/json' \
-		--data '{"numberToChange":33}' \
+		--data '{"numberToChange":42}' \
 		-s $(GATEWAY_URL)
 
 .PHONY: install

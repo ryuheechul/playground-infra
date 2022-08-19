@@ -10,7 +10,6 @@ test:
 		&& git diff --no-index direct-echo.json echo-via-gateway.json || true
 
 .PHONY: deploy
-.ONESHELL:
 deploy:
 	earthly -i --allow-privileged +deploy
 

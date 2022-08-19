@@ -49,7 +49,7 @@ export class OneOffTasksStack extends cdk.Stack {
       }
     );
 
-    const db = new rds.DatabaseCluster(
+    const dbCluster = new rds.DatabaseCluster(
       this,
       'rds',
       {
@@ -73,15 +73,21 @@ export class OneOffTasksStack extends cdk.Stack {
       }
     );
 
+    const useReferences: boolean = true;
+    // use below if you want to test with no references
+    // const useReferences: boolean = false;
+
+    const { db, secret } = getRDSHandles(this, useReferences, dbCluster, databaseCredentialSecret);
+
     const ct = new CreateTable(this, 'CreateTable', {
-      secret: databaseCredentialSecret,
+      secret,
       db,
       vpc,
     });
     ct.node.addDependency(db);
 
     const { stateMachine } = new HandleUpdate(this, 'HandleUpdate', {
-      secret: databaseCredentialSecret,
+      secret,
       db,
       vpc,
     });
@@ -100,6 +106,8 @@ export class OneOffTasksStack extends cdk.Stack {
       '- [x] vpc',
       '- [x] secret for rds',
       '- [x] rds - postgresql',
+      // to simulate non-direct ownership over rds and secret by not providing the real ones directly
+      '- [x] optional references to rds and secret',
       '- [x] secret to grant lambda to write access',
       '- [x] lambda for the step function to call',
       '- [x] grant lambda an access to database',
@@ -108,4 +116,26 @@ export class OneOffTasksStack extends cdk.Stack {
       '- [x] forbid unauthorized access with API token',
     ]);
   }
+}
+
+// this function allows to test both direct handles or imported ones
+function getRDSHandles(scope: Construct, useReferences: boolean, actualDB: rds.IDatabaseCluster, actualSecret: secretsManager.ISecret) {
+  if (!useReferences) {
+    return {
+      db: actualDB,
+      secret: actualSecret,
+    }
+  }
+
+  const clusterRef = rds.DatabaseCluster.fromDatabaseClusterAttributes(scope, 'RDSReference', {
+    clusterIdentifier: actualDB.clusterIdentifier,
+    // otherwise it would not work - more on that, https://github.com/aws/aws-cdk/issues/12140#issuecomment-747609208
+    // so this means, when referencing a cluster, finding and providing securityGroups are important
+    securityGroups: actualDB.connections.securityGroups,
+  });
+
+  const db = clusterRef;
+  const secret = secretsManager.Secret.fromSecretNameV2(scope, 'DBSecretRef', actualSecret.secretName);
+
+  return { db, secret };
 }

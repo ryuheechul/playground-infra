@@ -4,6 +4,7 @@ import { Construct } from 'constructs';
 import * as ec2 from 'aws-cdk-lib/aws-ec2';
 import * as rds from 'aws-cdk-lib/aws-rds';
 import * as iam from 'aws-cdk-lib/aws-iam';
+import * as logs from 'aws-cdk-lib/aws-logs';
 import * as cr from 'aws-cdk-lib/custom-resources';
 import * as lambda from 'aws-cdk-lib/aws-lambda';
 import * as lambdanodejs from 'aws-cdk-lib/aws-lambda-nodejs';
@@ -12,7 +13,7 @@ import * as tasks from 'aws-cdk-lib/aws-stepfunctions-tasks';
 import * as secretsManager from 'aws-cdk-lib/aws-secretsmanager';
 import * as apigateway from 'aws-cdk-lib/aws-apigateway';
 
-const { Duration, CustomResource } = cdk;
+const { Duration, CustomResource, RemovalPolicy } = cdk;
 
 const postgresPort = 5432;
 
@@ -52,7 +53,10 @@ export class HandleUpdate extends Construct {
     });
 
     secret.grantWrite(fn);
-    db.connections.allowFrom(fn, ec2.Port.tcp(postgresPort), `Lambda2Rds`);
+
+    // allowsTo actually handles `allowFrom` from the target so `db.connections.allowFrom(...` is not necessary
+    // https://github.com/aws/aws-cdk/blob/v2.38.1/packages/@aws-cdk/aws-ec2/lib/connections.ts#L128
+    fn.connections.allowTo(db, ec2.Port.tcp(postgresPort), `Lambda2Rds`);
 
     this.stateMachine = createStepFunction(this, fn);
   }
@@ -85,7 +89,7 @@ function createLambda(scope: Construct, { secret, vpc }: HandlerProps, { lambdaP
                 'secretsmanager:DescribeSecret',
                 'secretsmanager:ListSecretVersionIds',
               ],
-              resources: [secret.secretArn],
+              resources: [`${secret.secretArn}-??????`], // six ? for generated suffix
             }),
           ],
         })
@@ -145,12 +149,16 @@ function createStepFunction(scope: Construct, fn: lambda.Function) {
     outputPath: '$.Payload',
   });
 
+  const lg = new logs.LogGroup(scope, 'SFLG', {
+    retention: logs.RetentionDays.ONE_WEEK,
+    removalPolicy: RemovalPolicy.DESTROY,
+  });
+
   const definition =
     readFromBody
       .next(updateNumber)
       .next(
         new sfn.Choice(scope, 'Job Complete?')
-          // .when(sfn.Condition.stringEquals('$.status', 'SUCCEEDED'), finalStatus)
           .when(
             sfn.Condition.numberEqualsJsonPath('$.numberToChange', '$.numberAfterChange'),
             finalStatus
@@ -159,11 +167,15 @@ function createStepFunction(scope: Construct, fn: lambda.Function) {
 
   return new sfn.StateMachine(scope, 'StateMachine', {
     definition,
-    timeout: Duration.minutes(5),
+    timeout: Duration.minutes(2),
     stateMachineType: sfn.StateMachineType.EXPRESS,
+    logs: {
+      destination: lg,
+      // default is sfn.LogLevel.ERROR
+      level: sfn.LogLevel.ALL, // to debug
+    }
   });
 }
-
 
 export class GatewayForStepfunction extends Construct {
   public apiKeyId: string;
