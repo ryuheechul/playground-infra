@@ -1,0 +1,125 @@
+VERSION 0.6
+
+tester:
+  FROM nixery.dev/shell/gnumake/gnugrep/curl
+  ENV GATEWAY_URL
+  WORKDIR /opt/test
+
+  COPY Makefile .
+
+  CMD ["make", "test"]
+
+node:
+  FROM node:18-bullseye-slim
+
+cdk:
+  FROM +node
+  WORKDIR /opt/app
+
+  RUN npm i -g aws-cdk
+
+  ENTRYPOINT ["cdk"]
+
+# inspired by https://github.com/earthly/earthly/issues/1221#issuecomment-925390672
+hack-aws-config:
+  LOCALLY
+  RUN mkdir -p ./.hack-tmp
+  RUN cp -r ~/.aws ./.hack-tmp/aws
+  SAVE ARTIFACT ./.hack-tmp/aws aws
+  RUN rm -rf ./.hack-tmp
+
+# use this to fix `package-lock.json` either for local use or to be used for +npm-cache
+npm-install-local:
+  FROM +node
+  WORKDIR /build-node-modules
+  ARG CDK_NAME=swap-impaired
+
+  COPY cdk/${CDK_NAME}/package.json cdk/${CDK_NAME}/package-lock.json ./
+
+  RUN npm install
+
+  # if bumping up to a new format is desired, uncomment this and run `earthly +npm-cache` to produce new lock file
+  SAVE ARTIFACT ./node_modules AS LOCAL cdk/${CDK_NAME}/node_modules
+  SAVE ARTIFACT ./package-lock.json AS LOCAL cdk/${CDK_NAME}/package-lock.json
+
+npm-cache:
+  FROM +node
+  WORKDIR /build-node-modules
+  ARG CDK_NAME=swap-impaired
+
+  COPY cdk/${CDK_NAME}/package.json cdk/${CDK_NAME}/package-lock.json ./
+
+  RUN npm install
+
+  # if bumping up to a new format is desired, uncomment this and run `earthly +npm-cache` to produce new lock file
+  SAVE ARTIFACT ./node_modules node_modules
+  SAVE ARTIFACT ./package-lock.json package-lock.json
+
+  # below would not work for some reason hence the +npm-install-local (when it's used from other builds)
+  # for this reason - https://docs.earthly.dev/docs/earthfile#save-artifact:~:text=Note%20that%20local%20artifacts%20are%20only%20produced%20by%20targets%20that%20are%20run%20direcrtly%20with%20earthly
+  # SAVE ARTIFACT ./package-lock.json AS LOCAL cdk/${CDK_NAME}/package-lock.json
+
+deploy-prep:
+  FROM earthly/dind:alpine
+
+  ARG CDK_CTX_BRANCH=naive
+  ARG CDK_CTX_STAGE=0
+  # ARG can't make it through the child build so use env to deliver the context
+  ENV CDK_CTX="-c branch=${CDK_CTX_BRANCH} -c stage=${CDK_CTX_STAGE}"
+  ENV CDK_BRANCH_STAGE="${CDK_CTX_BRANCH}-${CDK_CTX_STAGE}"
+
+  WORKDIR /workdir
+
+  COPY --dir +hack-aws-config/aws /root/.aws
+  COPY docker-compose.cdk.yml .
+  COPY --dir cdk ./
+  COPY --dir lambda ./
+  COPY --dir +npm-cache/node_modules ./cdk/swap-impaired/
+
+deploy-prep-w-identity:
+  FROM +deploy-prep
+
+  # currently amazon/aws-cli is only being used for printing to show which identity is being used
+  WITH DOCKER --pull amazon/aws-cli:2.7.24
+    RUN --no-cache \
+      docker-compose -f docker-compose.cdk.yml run --rm aws sts get-caller-identity
+  END
+
+diff:
+  FROM +deploy-prep-w-identity
+
+  WITH DOCKER --load earthly_cdk:latest=+cdk
+    RUN --no-cache \
+      docker-compose -f docker-compose.cdk.yml run --rm cdk diff ${CDK_CTX}
+  END
+
+deploy:
+  FROM +deploy-prep-w-identity
+
+  WITH DOCKER --load earthly_cdk:latest=+cdk
+    RUN docker-compose -f docker-compose.cdk.yml run --entrypoint npm --rm cdk -- install
+  END
+
+  WITH DOCKER --load earthly_cdk:latest=+cdk
+    RUN --no-cache \
+      docker-compose -f docker-compose.cdk.yml run --rm cdk deploy ${CDK_CTX} \
+        --require-approval=never --outputs-file=../outputs.json
+  END
+
+  RUN cat cdk/outputs.json | jq -r '.[].ApiEndpoint' > endpoint-url.txt
+
+  # run tests against the deployed gateway
+  WITH DOCKER --load tester:latest=+tester
+    RUN --no-cache docker run --network=host \
+      -e GATEWAY_URL=$(cat endpoint-url.txt) \
+      -e CDK_BRANCH_STAGE=${CDK_BRANCH_STAGE} \
+      tester
+  END
+
+destroy:
+  FROM +deploy-prep-w-identity
+
+  WITH DOCKER --load earthly_cdk:latest=+cdk
+    RUN --no-cache \
+      docker-compose -f docker-compose.cdk.yml run --rm cdk destroy ${CDK_CTX} --force
+  END

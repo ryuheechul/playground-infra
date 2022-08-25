@@ -18,7 +18,7 @@ export class OneOffTasksStack extends cdk.Stack {
     const vpc = new ec2.Vpc(this, 'VPC', {
       natGateways: 1,
       maxAzs: 2,
-      cidr: '10.250.251.64/26',
+      cidr: '10.250.251.128/26',
       subnetConfiguration: [
         {
           name: 'PrivateWithNat',

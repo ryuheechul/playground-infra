@@ -11,10 +11,6 @@ test:
 		--data '{"numberToChange":42}' \
 		-s $(GATEWAY_URL)
 
-.PHONY: install
-install:
-	earthly -i +npm-install-local
-
 .PHONY: deploy
 deploy:
 	earthly -i --allow-privileged +deploy
@@ -31,3 +27,7 @@ clean-deploy: destroy deploy
 .PHONY: cdk
 cdk:
 	earthly -i +cdk
+
+.PHONY: install
+install:
+	earthly -i +npm-install-local
