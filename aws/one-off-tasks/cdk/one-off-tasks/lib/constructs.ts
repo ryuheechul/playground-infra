@@ -89,7 +89,7 @@ function createLambda(scope: Construct, { secret, vpc }: HandlerProps, { lambdaP
                 'secretsmanager:DescribeSecret',
                 'secretsmanager:ListSecretVersionIds',
               ],
-              resources: [`${secret.secretArn}-??????`], // six ? for generated suffix
+              resources: [`${secret.secretArn}-??????`], // six '?' for generated suffix
             }),
           ],
         })
@@ -197,7 +197,7 @@ export class GatewayForStepfunction extends Construct {
 
     const apiKey = gw.addApiKey('bot', {
       apiKeyName: 'bot',
-      description: 'for programatical access',
+      description: 'for programmatical access',
     });
 
     // having no usage plan will result in forbiding even with api keys
