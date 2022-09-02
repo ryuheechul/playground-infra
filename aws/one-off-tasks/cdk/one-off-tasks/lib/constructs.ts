@@ -191,7 +191,7 @@ export class GatewayForStepfunction extends Construct {
 
     // use escape hatch - https://docs.aws.amazon.com/cdk/v2/guide/cfn_layer.html
     // to set ApiKeyRequired, otherwise anyone can access
-    // because this is not provided in cdk level
+    // because this is not provided as cdk L2 yet
     const method = gw.methods[0].node.defaultChild as apigateway.CfnMethod;
     method.addPropertyOverride('ApiKeyRequired', true);
 
