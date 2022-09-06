@@ -144,10 +144,7 @@ function createStepFunction(scope: Construct, fn: lambda.Function) {
     error: 'DescribeJob returned FAILED',
   });
 
-  const finalStatus = new tasks.LambdaInvoke(scope, 'Get Final Job Status', {
-    lambdaFunction: fn,
-    outputPath: '$.Payload',
-  });
+  const finalStatus = new sfn.Succeed(scope, 'Job Succeeded');
 
   const lg = new logs.LogGroup(scope, 'SFLG', {
     retention: logs.RetentionDays.ONE_WEEK,
