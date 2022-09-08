@@ -25,6 +25,13 @@ diff-surgery-3:
 diff-surgery-4:
 	earthly -i --allow-privileged +diff --CDK_CTX_BRANCH=surgery --CDK_CTX_STAGE=4
 
+.PHONY: diff-linkswap-0
+diff-linkswap-0:
+	earthly -i --allow-privileged +diff --CDK_CTX_BRANCH=linkswap --CDK_CTX_STAGE=0
+.PHONY: diff-linkswap-1
+diff-linkswap-1:
+	earthly -i --allow-privileged +diff --CDK_CTX_BRANCH=linkswap --CDK_CTX_STAGE=1
+
 .PHONY: _test
 _test:
 	sleep 1 && curl -s -o /dev/null -w "%{http_code}\n" $(GATEWAY_URL)
@@ -53,7 +60,7 @@ deploy-naive-1:
 	earthly -i --allow-privileged +deploy --CDK_CTX_BRANCH=naive --CDK_CTX_STAGE=1
 
 .PHONY: deploy-naive-all
-deploy-naive-all:
+deploy-naive-all: deploy-reset
 	$(MAKE) deploy-naive-0 && $(MAKE) deploy-naive-1
 
 .PHONY: deploy-surgery-0
@@ -73,8 +80,19 @@ deploy-surgery-4:
 	earthly -i --allow-privileged +deploy --CDK_CTX_BRANCH=surgery --CDK_CTX_STAGE=4
 
 .PHONY: deploy-surgery-all
-deploy-surgery-all:
+deploy-surgery-all: deploy-reset
 	$(MAKE) deploy-surgery-0 && $(MAKE) deploy-surgery-1 && $(MAKE) deploy-surgery-2 && $(MAKE) deploy-surgery-3 && $(MAKE) deploy-surgery-4
+
+.PHONY: deploy-linkswap-0
+deploy-linkswap-0:
+	earthly -i --allow-privileged +deploy --CDK_CTX_BRANCH=linkswap --CDK_CTX_STAGE=0
+.PHONY: deploy-linkswap-1
+deploy-linkswap-1:
+	earthly -i --allow-privileged +deploy --CDK_CTX_BRANCH=linkswap --CDK_CTX_STAGE=1
+
+.PHONY: deploy-linkswap-all
+deploy-linkswap-all: deploy-reset
+	$(MAKE) deploy-linkswap-0 && $(MAKE) deploy-linkswap-1
 
 .PHONY: destroy
 destroy:
@@ -82,7 +100,7 @@ destroy:
 
 
 .PHONY: clean-deploy
-clean-deploy: destroy deploy-naive-0
+clean-deploy: destroy deploy-naive-all
 
 ## everything below here are helper commands for debugging
 

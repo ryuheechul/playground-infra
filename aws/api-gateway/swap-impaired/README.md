@@ -43,6 +43,15 @@ graph TD
     end
 ```
 
+### LinkSwap
+
+Run `make deploy-linkswap-all` if in a hurry. If not `make-deploy-linkswap-[0-1]` in order.
+
+Basically same as Naive approach but except it also replaces VpcLink with a new one when changing the port at the same time.
+This is a much simpler and better way then Surgery approach below that is newly discovered after initial Surgery approach. So we can all avoid Surgery approach now.
+
+_Although this is a better hack but still a hack. And not sure if this is a guaranteed way to work every single time but it worked with several tests of mine._
+
 ### Surgery
 
 When naive approach doesn't work as expected, we can do a "surgery" to remove the old one and introduce the new one to minimize down time and still satistfy CDK without having to manually manipulate resources and import the new states.

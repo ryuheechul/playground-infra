@@ -5,12 +5,18 @@ import { GatewayToFargate } from './gateway-to-fargate';
 enum Branch {
   Naive = 'naive',
   Surgery = 'surgery',
+  LinkSwap = 'linkswap',
   // this can be used to start over without having to delete other resources like VPC
   // look at `make deploy-reset`
   Reset = 'reset',
 }
 
 enum StageForNaive {
+  Stage_0_StartWithPort3000 = 0,
+  Stage_1_ChangePortTo80,
+}
+
+enum StageForLinkSwap {
   Stage_0_StartWithPort3000 = 0,
   Stage_1_ChangePortTo80,
 }
@@ -59,6 +65,7 @@ export class SwapImpairedStack extends Stack {
     const divergeWith = {
       [Branch.Reset]: () => self.onResetBranch(),
       [Branch.Naive]: () => self.onNaiveBranch(vpc),
+      [Branch.LinkSwap]: () => self.onLinkSwapBranch(vpc),
       [Branch.Surgery]: () => self.onSurgeryBranch(vpc),
     }
 
@@ -87,6 +94,37 @@ export class SwapImpairedStack extends Stack {
     const gatewayToFargate = new GatewayToFargate(this, 'ToMutate', {
       vpc,
       port,
+    });
+
+    new CfnOutput(this, 'ApiEndpoint', {
+      value: gatewayToFargate.apiEndpoint,
+    });
+  }
+
+  // basically naive but also swap the vpc link at the same time when changing port
+  onLinkSwapBranch(vpc: ec2.Vpc) {
+    const stage: StageForLinkSwap = this.node.tryGetContext('stage');
+
+    const {
+      Stage_0_StartWithPort3000,
+      Stage_1_ChangePortTo80,
+    } = StageForLinkSwap;
+
+    const { port, specifyVpcLink } = {
+      [Stage_0_StartWithPort3000]: {
+        port: '3000',
+        specifyVpcLink: false
+      },
+      [Stage_1_ChangePortTo80]: {
+        port: '80',
+        specifyVpcLink: true
+      },
+    }[stage];
+
+    const gatewayToFargate = new GatewayToFargate(this, 'ToMutate', {
+      vpc,
+      port,
+      specifyVpcLink,
     });
 
     new CfnOutput(this, 'ApiEndpoint', {

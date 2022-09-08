@@ -23,6 +23,7 @@ export interface GatewayToFargateProps {
   isTimeToReleaseDomain?: boolean;
   skipHavingDomain?: boolean;
   needToDeleteOldDomainFirst?: boolean;
+  specifyVpcLink?: boolean;
 }
 
 interface LoadbalancedECSProps {
@@ -36,6 +37,7 @@ interface RouteMappedAPIGatewayProps {
   isTimeToReleaseDomain: boolean;
   skipHavingDomain: boolean;
   needToDeleteOldDomainFirst: boolean;
+  specifyVpcLink: boolean;
 }
 
 // using NestedStack to group (deployment unit of) two high level constructs together
@@ -53,6 +55,7 @@ export class GatewayToFargate extends NestedStack {
     const isTimeToReleaseDomain = props.isTimeToReleaseDomain || false;
     const skipHavingDomain = props.skipHavingDomain || false;
     const needToDeleteOldDomainFirst = props.needToDeleteOldDomainFirst || false;
+    const specifyVpcLink = props.specifyVpcLink || false;
 
     const ecs = new LoadbalancedECS(this, 'ECS', {
       vpc,
@@ -65,6 +68,7 @@ export class GatewayToFargate extends NestedStack {
       isTimeToReleaseDomain,
       skipHavingDomain,
       needToDeleteOldDomainFirst,
+      specifyVpcLink,
     });
 
     this.apiEndpoint = gateway.apiEndpoint;
@@ -135,6 +139,7 @@ export class RouteMappedAPIGateway extends Construct {
       isTimeToReleaseDomain,
       skipHavingDomain,
       needToDeleteOldDomainFirst,
+      specifyVpcLink,
     } = props;
 
     const {
@@ -180,9 +185,24 @@ export class RouteMappedAPIGateway extends Construct {
       }
     );
 
+    if (!alb.loadBalancer.vpc) {
+      throw 'vpc not found';
+    }
+
+    let vpcLink = undefined;
+
+    if (specifyVpcLink) {
+      vpcLink = new apiGateway.VpcLink(this, 'link', {
+        vpc: alb.loadBalancer.vpc,
+      });
+    }
+
     const integration = new HttpAlbIntegration(
       apiGatewayHttp.node.id,
       alb.listener,
+      {
+        vpcLink,
+      },
     );
 
 
