@@ -70,6 +70,8 @@ npm-cache:
 deploy-prep:
   FROM earthly/dind:alpine
 
+  RUN apk update && apk add make
+
   # it's important to match this directory to the one in ./docker-compose.cdk.yml in this instance
   # because of how `public.ecr.aws/sam/build-nodejs16.x` works
   WORKDIR /opt/app
@@ -80,6 +82,11 @@ deploy-prep:
   COPY --dir lambda ./
   COPY --dir +npm-cache/node_modules ./cdk/one-off-tasks/
   COPY +npm-cache/package-lock.json ./cdk/one-off-tasks/
+
+  # run tests before deploy
+  WITH DOCKER --pull postgres:14.5 --pull public.ecr.aws/lambda/nodejs:16
+    RUN cd lambda && make tests
+  END
 
 deploy-prep-w-identity:
   FROM +deploy-prep

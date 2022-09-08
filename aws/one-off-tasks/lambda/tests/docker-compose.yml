@@ -1,0 +1,18 @@
+version: '3.8'
+services:
+  postgres:
+    image: postgres:14.5
+    container_name: postgres
+    environment:
+      POSTGRES_PASSWORD: postgres
+  update-record:
+    build:
+      context: ../
+      # relative from context
+      dockerfile: ./tests/update-record/Dockerfile
+    links:
+      - "postgres"
+  debug:
+    image: nicolaka/netshoot
+    links:
+      - "postgres"

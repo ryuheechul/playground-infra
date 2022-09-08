@@ -1,6 +1,6 @@
 import { provideConnectionProps } from './db-info'
 import { DBClient } from './db-client'
-import { update, healthCheck, provisionTable } from './crucial-command'
+import { update, healthCheck, provisionTable } from './crucial-commands'
 
 export async function onEvent(event) {
   console.info('Started with event: ', { event });

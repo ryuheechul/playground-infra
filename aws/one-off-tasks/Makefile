@@ -31,3 +31,8 @@ cdk:
 .PHONY: install
 install:
 	earthly -i +npm-install-local
+
+# to run tests only without actually deploying
+.PHONY: deploy-prep
+deploy-prep:
+	earthly -i --allow-privileged +deploy-prep

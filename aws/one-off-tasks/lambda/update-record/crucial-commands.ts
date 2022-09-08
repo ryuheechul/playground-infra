@@ -14,7 +14,7 @@ async function doesTableExist(client: IDBClient) {
   return exists
 }
 
-async function dropTable(client: IDBClient) {
+export async function dropTable(client: IDBClient) {
   const res = await client.oneOff('DROP TABLE IF EXISTS my_numbers;');
 
   console.info('drop table', res);
