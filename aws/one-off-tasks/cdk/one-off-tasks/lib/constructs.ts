@@ -135,8 +135,10 @@ function createStepFunction(scope: Construct, fn: lambda.Function) {
     payload: sfn.TaskInput.fromObject({
       numberToChange: sfn.JsonPath.stringAt('$.numberToChange'),
     }),
-    // Lambda's result is in the attribute `Payload`
-    outputPath: '$.Payload',
+    // set lambda result path `$.Result.Payload` is where the return value will be
+    resultPath: '$.Result',
+    // to keep input as well
+    outputPath: '$',
   });
 
   const jobFailed = new sfn.Fail(scope, 'Job Failed', {
@@ -144,12 +146,13 @@ function createStepFunction(scope: Construct, fn: lambda.Function) {
     error: 'DescribeJob returned FAILED',
   });
 
-  const finalStatus = new sfn.Succeed(scope, 'Job Succeeded');
-
-  const lg = new logs.LogGroup(scope, 'SFLG', {
-    retention: logs.RetentionDays.ONE_WEEK,
-    removalPolicy: RemovalPolicy.DESTROY,
+  const filterResult = new sfn.Pass(scope, 'Filter Result', {
+    inputPath: '$.Result.Payload',
   });
+
+  const finalStatus = filterResult.next(
+    new sfn.Succeed(scope, 'Job Succeeded')
+  );
 
   const definition =
     readFromBody
@@ -157,10 +160,15 @@ function createStepFunction(scope: Construct, fn: lambda.Function) {
       .next(
         new sfn.Choice(scope, 'Job Complete?')
           .when(
-            sfn.Condition.numberEqualsJsonPath('$.numberToChange', '$.numberAfterChange'),
-            finalStatus
+            sfn.Condition.numberEqualsJsonPath('$.numberToChange', '$.Result.Payload.numberAfterChange'),
+            finalStatus,
           ).otherwise(jobFailed)
       );
+
+  const lg = new logs.LogGroup(scope, 'SFLG', {
+    retention: logs.RetentionDays.ONE_WEEK,
+    removalPolicy: RemovalPolicy.DESTROY,
+  });
 
   return new sfn.StateMachine(scope, 'StateMachine', {
     definition,

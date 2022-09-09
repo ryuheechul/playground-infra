@@ -16,7 +16,6 @@ export async function onEvent(event) {
   await provisionTable(client);
 
   return {
-    numberToChange,
     numberAfterChange: await update(client, 1, numberToChange),
   };
 }

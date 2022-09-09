@@ -9,7 +9,7 @@ async function expectNotToThrowError(fn: Promise<any>) {
     .toThrowError();
 }
 
-describe('db module', () => {
+describe('crucial-commands module', () => {
   const client = new DBClient(async () => {
     return {
       port: 5432,
@@ -28,7 +28,7 @@ describe('db module', () => {
     await dropTable(client);
   });
 
-  test('db healthcheck', async () => {
+  test('update', async () => {
     await expectNotToThrowError(
       healthCheck(client)
     );
