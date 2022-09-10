@@ -1,4 +1,7 @@
-import { SecretsManagerClient, GetSecretValueCommand } from "@aws-sdk/client-secrets-manager";
+import {
+  SecretsManagerClient,
+  GetSecretValueCommand,
+} from '@aws-sdk/client-secrets-manager';
 import { ProvideConnectionProps } from './db-client';
 
 // an alternative way to consume db connection info rather than via environment variables
@@ -12,14 +15,8 @@ export async function fetchDbInfo() {
   const command = new GetSecretValueCommand({ SecretId });
   const { SecretString } = await client.send(command);
 
-  const {
-    host,
-    port,
-    engine,
-    dbname,
-    username,
-    password,
-  } = JSON.parse(SecretString);
+  const { host, port, engine, dbname, username, password } =
+    JSON.parse(SecretString);
 
   return {
     host,
@@ -34,13 +31,7 @@ export async function fetchDbInfo() {
 async function _provideConnectionProps() {
   const fetched = await fetchDbInfo();
 
-  const {
-    host,
-    port,
-    dbname: database,
-    username: user,
-    password,
-  } = fetched;
+  const { host, port, dbname: database, username: user, password } = fetched;
 
   return {
     host,
@@ -48,7 +39,8 @@ async function _provideConnectionProps() {
     user,
     password,
     port,
-  }
+  };
 }
 
-export const provideConnectionProps: ProvideConnectionProps = _provideConnectionProps;
+export const provideConnectionProps: ProvideConnectionProps =
+  _provideConnectionProps;

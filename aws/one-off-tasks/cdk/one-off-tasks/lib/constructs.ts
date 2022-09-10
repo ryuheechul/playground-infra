@@ -27,14 +27,18 @@ export class CreateTable extends Construct {
   constructor(scope: Construct, id: string, { secret, db, vpc }: HandlerProps) {
     super(scope, id);
 
-    const fn = createLambda(this, { secret, db, vpc }, {
-      lambdaPath: '../../../lambda/create-table',
-      entryFilename: 'index.js',
-    });
+    const fn = createLambda(
+      this,
+      { secret, db, vpc },
+      {
+        lambdaPath: '../../../lambda/create-table',
+        entryFilename: 'index.js',
+      }
+    );
 
     const provider = new cr.Provider(this, 'Provider', {
       onEventHandler: fn,
-    })
+    });
 
     new CustomResource(this, 'CR', {
       serviceToken: provider.serviceToken,
@@ -47,10 +51,14 @@ export class HandleUpdate extends Construct {
   constructor(scope: Construct, id: string, { secret, db, vpc }: HandlerProps) {
     super(scope, id);
 
-    const fn = createLambda(this, { secret, db, vpc }, {
-      lambdaPath: '../../../lambda/update-record',
-      entryFilename: 'index.ts',
-    });
+    const fn = createLambda(
+      this,
+      { secret, db, vpc },
+      {
+        lambdaPath: '../../../lambda/update-record',
+        entryFilename: 'index.ts',
+      }
+    );
 
     secret.grantWrite(fn);
 
@@ -67,8 +75,13 @@ interface CreateLambdaProps {
   entryFilename: string;
 }
 
-function createLambda(scope: Construct, { secret, vpc }: HandlerProps, { lambdaPath, entryFilename }: CreateLambdaProps) {
-  const atLambdaPath = (filename: string) => path.join(__dirname, lambdaPath, filename);
+function createLambda(
+  scope: Construct,
+  { secret, vpc }: HandlerProps,
+  { lambdaPath, entryFilename }: CreateLambdaProps
+) {
+  const atLambdaPath = (filename: string) =>
+    path.join(__dirname, lambdaPath, filename);
 
   const depsLockFilePath = atLambdaPath('package-lock.json');
   const entry = atLambdaPath(entryFilename);
@@ -76,11 +89,11 @@ function createLambda(scope: Construct, { secret, vpc }: HandlerProps, { lambdaP
   const fn = new lambdanodejs.NodejsFunction(scope, 'Func', {
     role: new iam.Role(scope, 'RoleForFunc', {
       assumedBy: new iam.ServicePrincipal('lambda.amazonaws.com'),
-      managedPolicies: [
-        'service-role/AWSLambdaVPCAccessExecutionRole',
-      ].map(polName => iam.ManagedPolicy.fromAwsManagedPolicyName(polName)),
+      managedPolicies: ['service-role/AWSLambdaVPCAccessExecutionRole'].map(
+        (polName) => iam.ManagedPolicy.fromAwsManagedPolicyName(polName)
+      ),
       inlinePolicies: {
-        'fetchSecret': new iam.PolicyDocument({
+        fetchSecret: new iam.PolicyDocument({
           statements: [
             new iam.PolicyStatement({
               actions: [
@@ -92,8 +105,8 @@ function createLambda(scope: Construct, { secret, vpc }: HandlerProps, { lambdaP
               resources: [`${secret.secretArn}-??????`], // six '?' for generated suffix
             }),
           ],
-        })
-      }
+        }),
+      },
     }),
     runtime: lambda.Runtime.NODEJS_16_X,
     entry,
@@ -105,11 +118,8 @@ function createLambda(scope: Construct, { secret, vpc }: HandlerProps, { lambdaP
       DB_SECRET_ARN: secret.secretArn,
     },
     bundling: {
-      externalModules: [
-        'aws-sdk',
-        'pg-native',
-      ]
-    }
+      externalModules: ['aws-sdk', 'pg-native'],
+    },
   });
 
   //// some how these cause issue of circula dependancy only with CreateTable - since it actually doesn't need these yet, comment out
@@ -154,16 +164,19 @@ function createStepFunction(scope: Construct, fn: lambda.Function) {
     new sfn.Succeed(scope, 'Job Succeeded')
   );
 
-  const definition =
-    readFromBody
-      .next(updateNumber)
-      .next(
-        new sfn.Choice(scope, 'Job Complete?')
-          .when(
-            sfn.Condition.numberEqualsJsonPath('$.numberToChange', '$.Result.Payload.numberAfterChange'),
-            finalStatus,
-          ).otherwise(jobFailed)
-      );
+  const definition = readFromBody
+    .next(updateNumber)
+    .next(
+      new sfn.Choice(scope, 'Job Complete?')
+        .when(
+          sfn.Condition.numberEqualsJsonPath(
+            '$.numberToChange',
+            '$.Result.Payload.numberAfterChange'
+          ),
+          finalStatus
+        )
+        .otherwise(jobFailed)
+    );
 
   const lg = new logs.LogGroup(scope, 'SFLG', {
     retention: logs.RetentionDays.ONE_WEEK,
@@ -178,7 +191,7 @@ function createStepFunction(scope: Construct, fn: lambda.Function) {
       destination: lg,
       // default is sfn.LogLevel.ERROR
       level: sfn.LogLevel.ALL, // to debug
-    }
+    },
   });
 }
 
@@ -188,11 +201,15 @@ export class GatewayForStepfunction extends Construct {
   constructor(scope: Construct, id: string, stateMachine: sfn.IStateMachine) {
     super(scope, id);
 
-    const gw = new apigateway.StepFunctionsRestApi(this, 'StepFunctionsRestApi', {
-      deploy: true,
-      stateMachine,
-      headers: true,
-    });
+    const gw = new apigateway.StepFunctionsRestApi(
+      this,
+      'StepFunctionsRestApi',
+      {
+        deploy: true,
+        stateMachine,
+        headers: true,
+      }
+    );
 
     // use escape hatch - https://docs.aws.amazon.com/cdk/v2/guide/cfn_layer.html
     // to set ApiKeyRequired, otherwise anyone can access
@@ -213,7 +230,6 @@ export class GatewayForStepfunction extends Construct {
           stage: gw.deploymentStage,
         },
       ],
-
     });
 
     // https://stackoverflow.com/a/39365110/1570165

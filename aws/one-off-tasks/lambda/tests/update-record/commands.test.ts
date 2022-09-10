@@ -1,12 +1,14 @@
 import { describe, expect, test, beforeEach, afterEach } from '@jest/globals';
-import { healthCheck, provisionTable, dropTable, update } from './crucial-commands';
-import { DBClient } from './db-client'
+import {
+  healthCheck,
+  provisionTable,
+  dropTable,
+  update,
+} from './crucial-commands';
+import { DBClient } from './db-client';
 
 async function expectNotToThrowError(fn: Promise<any>) {
-  return expect(fn)
-    .resolves
-    .not
-    .toThrowError();
+  return expect(fn).resolves.not.toThrowError();
 }
 
 describe('crucial-commands module', () => {
@@ -29,9 +31,7 @@ describe('crucial-commands module', () => {
   });
 
   test('update', async () => {
-    await expectNotToThrowError(
-      healthCheck(client)
-    );
+    await expectNotToThrowError(healthCheck(client));
 
     const numberToChange = 42;
     const result = await update(client, 1, numberToChange);

@@ -3,7 +3,11 @@ import { Construct } from 'constructs';
 import * as ec2 from 'aws-cdk-lib/aws-ec2';
 import * as rds from 'aws-cdk-lib/aws-rds';
 import * as secretsManager from 'aws-cdk-lib/aws-secretsmanager';
-import { CreateTable, HandleUpdate, GatewayForStepfunction } from './constructs';
+import {
+  CreateTable,
+  HandleUpdate,
+  GatewayForStepfunction,
+} from './constructs';
 import { CfnOutput } from 'aws-cdk-lib';
 
 const { Duration } = cdk;
@@ -29,8 +33,8 @@ export class OneOffTasksStack extends cdk.Stack {
         {
           name: 'Public',
           subnetType: ec2.SubnetType.PUBLIC,
-        }
-      ]
+        },
+      ],
     });
 
     const databaseCredentialSecret = new secretsManager.Secret(
@@ -49,35 +53,36 @@ export class OneOffTasksStack extends cdk.Stack {
       }
     );
 
-    const dbCluster = new rds.DatabaseCluster(
-      this,
-      'rds',
-      {
-        engine: rds.DatabaseClusterEngine.auroraPostgres({
-          version: rds.AuroraPostgresEngineVersion.VER_14_3,
-        }),
-        instanceProps: {
-          instanceType: ec2.InstanceType.of(
-            InstanceClass.BURSTABLE4_GRAVITON,
-            InstanceSize.MEDIUM,
-          ),
-          vpc,
-        },
-        defaultDatabaseName: 'OneOffTest',
-        credentials: rds.Credentials.fromSecret(databaseCredentialSecret),
-        storageEncrypted: false,
-        deletionProtection: false,
-        iamAuthentication: true,
-        monitoringInterval: Duration.seconds(5),
-        port: postgresPort,
-      }
-    );
+    const dbCluster = new rds.DatabaseCluster(this, 'rds', {
+      engine: rds.DatabaseClusterEngine.auroraPostgres({
+        version: rds.AuroraPostgresEngineVersion.VER_14_3,
+      }),
+      instanceProps: {
+        instanceType: ec2.InstanceType.of(
+          InstanceClass.BURSTABLE4_GRAVITON,
+          InstanceSize.MEDIUM
+        ),
+        vpc,
+      },
+      defaultDatabaseName: 'OneOffTest',
+      credentials: rds.Credentials.fromSecret(databaseCredentialSecret),
+      storageEncrypted: false,
+      deletionProtection: false,
+      iamAuthentication: true,
+      monitoringInterval: Duration.seconds(5),
+      port: postgresPort,
+    });
 
-    const useReferences: boolean = true;
+    const useReferences = true;
     // use below if you want to test with no references
     // const useReferences: boolean = false;
 
-    const { db, secret } = getRDSHandles(this, useReferences, dbCluster, databaseCredentialSecret);
+    const { db, secret } = getRDSHandles(
+      this,
+      useReferences,
+      dbCluster,
+      databaseCredentialSecret
+    );
 
     const ct = new CreateTable(this, 'CreateTable', {
       secret,
@@ -119,23 +124,36 @@ export class OneOffTasksStack extends cdk.Stack {
 }
 
 // this function allows to test both direct handles or imported ones
-function getRDSHandles(scope: Construct, useReferences: boolean, actualDB: rds.IDatabaseCluster, actualSecret: secretsManager.ISecret) {
+function getRDSHandles(
+  scope: Construct,
+  useReferences: boolean,
+  actualDB: rds.IDatabaseCluster,
+  actualSecret: secretsManager.ISecret
+) {
   if (!useReferences) {
     return {
       db: actualDB,
       secret: actualSecret,
-    }
+    };
   }
 
-  const clusterRef = rds.DatabaseCluster.fromDatabaseClusterAttributes(scope, 'RDSReference', {
-    clusterIdentifier: actualDB.clusterIdentifier,
-    // otherwise it would not work - more on that, https://github.com/aws/aws-cdk/issues/12140#issuecomment-747609208
-    // so this means, when referencing a cluster, finding and providing securityGroups are important
-    securityGroups: actualDB.connections.securityGroups,
-  });
+  const clusterRef = rds.DatabaseCluster.fromDatabaseClusterAttributes(
+    scope,
+    'RDSReference',
+    {
+      clusterIdentifier: actualDB.clusterIdentifier,
+      // otherwise it would not work - more on that, https://github.com/aws/aws-cdk/issues/12140#issuecomment-747609208
+      // so this means, when referencing a cluster, finding and providing securityGroups are important
+      securityGroups: actualDB.connections.securityGroups,
+    }
+  );
 
   const db = clusterRef;
-  const secret = secretsManager.Secret.fromSecretNameV2(scope, 'DBSecretRef', actualSecret.secretName);
+  const secret = secretsManager.Secret.fromSecretNameV2(
+    scope,
+    'DBSecretRef',
+    actualSecret.secretName
+  );
 
   return { db, secret };
 }

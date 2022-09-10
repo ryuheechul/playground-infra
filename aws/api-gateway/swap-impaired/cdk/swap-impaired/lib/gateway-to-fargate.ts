@@ -1,11 +1,6 @@
 import * as apiGateway from '@aws-cdk/aws-apigatewayv2-alpha';
 import { HttpAlbIntegration } from '@aws-cdk/aws-apigatewayv2-integrations-alpha';
-import {
-  Duration,
-  NestedStack,
-  Stack,
-  RemovalPolicy,
-} from 'aws-cdk-lib';
+import { Duration, NestedStack, Stack, RemovalPolicy } from 'aws-cdk-lib';
 import * as ec2 from 'aws-cdk-lib/aws-ec2';
 import * as ecs from 'aws-cdk-lib/aws-ecs';
 import * as route53 from 'aws-cdk-lib/aws-route53';
@@ -46,15 +41,13 @@ export class GatewayToFargate extends NestedStack {
   constructor(scope: Construct, id: string, props: GatewayToFargateProps) {
     super(scope, id);
 
-    const {
-      vpc,
-      port,
-    } = props;
+    const { vpc, port } = props;
 
     const shouldRetainOnRemoval = props.shouldRetainGatewayOnRemoval || false;
     const isTimeToReleaseDomain = props.isTimeToReleaseDomain || false;
     const skipHavingDomain = props.skipHavingDomain || false;
-    const needToDeleteOldDomainFirst = props.needToDeleteOldDomainFirst || false;
+    const needToDeleteOldDomainFirst =
+      props.needToDeleteOldDomainFirst || false;
     const specifyVpcLink = props.specifyVpcLink || false;
 
     const ecs = new LoadbalancedECS(this, 'ECS', {
@@ -80,37 +73,30 @@ export class LoadbalancedECS extends Construct {
   constructor(scope: Construct, id: string, props: LoadbalancedECSProps) {
     super(scope, id);
 
-    const {
-      vpc,
-      port,
-    } = props;
+    const { vpc, port } = props;
 
     const portAsNum = +port;
 
     const cluster = new ecs.Cluster(this, 'Cluster', { vpc });
 
-    const alb = new ApplicationLoadBalancedFargateService(
-      this,
-      'ALBFargate',
-      {
-        cluster: cluster,
-        cpu: 256,
-        memoryLimitMiB: 512,
-        desiredCount: 1,
-        healthCheckGracePeriod: Duration.seconds(300),
-        listenerPort: portAsNum,
-        taskImageOptions: {
-          image: ecs.ContainerImage.fromRegistry('jmalloc/echo-server'),
-          containerPort: portAsNum,
-          environment: {
-            PORT: port,
-          }
+    const alb = new ApplicationLoadBalancedFargateService(this, 'ALBFargate', {
+      cluster: cluster,
+      cpu: 256,
+      memoryLimitMiB: 512,
+      desiredCount: 1,
+      healthCheckGracePeriod: Duration.seconds(300),
+      listenerPort: portAsNum,
+      taskImageOptions: {
+        image: ecs.ContainerImage.fromRegistry('jmalloc/echo-server'),
+        containerPort: portAsNum,
+        environment: {
+          PORT: port,
         },
-        publicLoadBalancer: false,
-        maxHealthyPercent: 200,
-        minHealthyPercent: 50,
-      }
-    );
+      },
+      publicLoadBalancer: false,
+      maxHealthyPercent: 200,
+      minHealthyPercent: 50,
+    });
 
     alb.targetGroup.configureHealthCheck({
       protocol: Protocol.HTTP,
@@ -142,19 +128,18 @@ export class RouteMappedAPIGateway extends Construct {
       specifyVpcLink,
     } = props;
 
-    const {
-      shouldStopProgressing,
-      defaultDomainMapping,
-    } = this.HandleUsageOfDomain(
-      shouldRetainOnRemoval,
-      isTimeToReleaseDomain,
-      skipHavingDomain,
-      needToDeleteOldDomainFirst,
-    );
+    const { shouldStopProgressing, defaultDomainMapping } =
+      this.HandleUsageOfDomain(
+        shouldRetainOnRemoval,
+        isTimeToReleaseDomain,
+        skipHavingDomain,
+        needToDeleteOldDomainFirst
+      );
 
     // after this RemovalPolicy.RETAIN will make sure resources are stop being tracked by CDK but still exists
     if (shouldStopProgressing) {
-      this.apiEndpoint = "http://skip.getting.domain-name.because.difficult.to.set.at.this.stage";
+      this.apiEndpoint =
+        'http://skip.getting.domain-name.because.difficult.to.set.at.this.stage';
       return;
     }
 
@@ -202,9 +187,8 @@ export class RouteMappedAPIGateway extends Construct {
       alb.listener,
       {
         vpcLink,
-      },
+      }
     );
-
 
     const routeOption = new apiGateway.HttpRoute(this, 'OptionsNoAuthoriser', {
       httpApi: apiGatewayHttp,
@@ -243,7 +227,7 @@ export class RouteMappedAPIGateway extends Construct {
     shouldRetainOnRemoval: boolean,
     isTimeToReleaseDomain: boolean,
     skipHavingDomain: boolean,
-    needToDeleteOldDomainFirst: boolean,
+    needToDeleteOldDomainFirst: boolean
   ): ResultOfHandleUsageOfDomain {
     // keep this to `false` unless you really want to test with custom domain
     // because we are not using Certficate, apiGateway.DomainName, route53.ARecord for this example to avoid "unnecessary" dependency having to own a domain
@@ -254,11 +238,13 @@ export class RouteMappedAPIGateway extends Construct {
       return {
         shouldStopProgressing: isTimeToReleaseDomain ? true : false,
         defaultDomainMapping: undefined,
-      }
+      };
     }
 
     const domainName = 'your-domain.com';
-    const hostedZone = route53.HostedZone.fromLookup(this, 'HostedZone', { domainName });
+    const hostedZone = route53.HostedZone.fromLookup(this, 'HostedZone', {
+      domainName,
+    });
 
     const region = Stack.of(this).region;
 
@@ -276,14 +262,14 @@ export class RouteMappedAPIGateway extends Construct {
       return {
         shouldStopProgressing: true,
         defaultDomainMapping: undefined,
-      }
+      };
     }
 
     if (skipHavingDomain) {
       return {
         shouldStopProgressing: false,
         defaultDomainMapping: undefined,
-      }
+      };
     }
 
     const apiDomain = new apiGateway.DomainName(this, 'APIDomain', {
@@ -291,20 +277,16 @@ export class RouteMappedAPIGateway extends Construct {
       domainName,
     });
 
-    const aRecord = new route53.ARecord(
-      this,
-      'ARecord',
-      {
-        zone: hostedZone,
-        recordName: domainName,
-        target: route53.RecordTarget.fromAlias(
-          new ApiGatewayv2DomainProperties(
-            apiDomain.regionalDomainName,
-            apiDomain.regionalHostedZoneId
-          )
-        ),
-      }
-    );
+    const aRecord = new route53.ARecord(this, 'ARecord', {
+      zone: hostedZone,
+      recordName: domainName,
+      target: route53.RecordTarget.fromAlias(
+        new ApiGatewayv2DomainProperties(
+          apiDomain.regionalDomainName,
+          apiDomain.regionalHostedZoneId
+        )
+      ),
+    });
 
     if (shouldRetainOnRemoval) {
       apiDomain.applyRemovalPolicy(RemovalPolicy.RETAIN);
@@ -325,8 +307,8 @@ export class RouteMappedAPIGateway extends Construct {
     return {
       shouldStopProgressing: false,
       defaultDomainMapping: {
-        domainName: apiDomain
-      }
+        domainName: apiDomain,
+      },
     };
   }
 }

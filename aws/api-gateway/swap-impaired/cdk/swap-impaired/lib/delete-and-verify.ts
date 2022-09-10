@@ -10,12 +10,17 @@ import { Construct } from 'constructs';
 import * as path from 'path';
 
 export class DeleteAndVerify extends Construct {
-  constructor(scope: Construct, id: string, domainName: string, hostedZoneId: string) {
+  constructor(
+    scope: Construct,
+    id: string,
+    domainName: string,
+    hostedZoneId: string
+  ) {
     super(scope, id);
 
     const lambdaPath = path.join(
       __dirname,
-      '../../../lambda/gateway-custom-domain',
+      '../../../lambda/gateway-custom-domain'
     );
 
     const fn = new lambda.Function(this, 'Function', {
@@ -25,7 +30,7 @@ export class DeleteAndVerify extends Construct {
           'service-role/AWSLambdaBasicExecutionRole',
           'AmazonAPIGatewayAdministrator',
           'AmazonRoute53FullAccess',
-        ].map(polName => iam.ManagedPolicy.fromAwsManagedPolicyName(polName))
+        ].map((polName) => iam.ManagedPolicy.fromAwsManagedPolicyName(polName)),
       }),
       runtime: lambda.Runtime.NODEJS_16_X,
       handler: 'index.onEvent',
@@ -33,10 +38,10 @@ export class DeleteAndVerify extends Construct {
       timeout: Duration.minutes(5),
     });
 
-    const provider = new cr.Provider(this, "Provider", {
+    const provider = new cr.Provider(this, 'Provider', {
       onEventHandler: fn,
       logRetention: logs.RetentionDays.ONE_DAY,
-    })
+    });
 
     new CustomResource(this, 'CR', {
       serviceToken: provider.serviceToken,

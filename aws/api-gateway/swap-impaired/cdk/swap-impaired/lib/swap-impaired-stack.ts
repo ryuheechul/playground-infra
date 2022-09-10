@@ -36,10 +36,10 @@ export class SwapImpairedStack extends Stack {
     super(scope, id, props);
 
     const branch: Branch = this.node.tryGetContext('branch');
-    console.info(
-      'Given context:\n',
-      { branch, stage: this.node.tryGetContext('stage') }
-    );
+    console.info('Given context:\n', {
+      branch,
+      stage: this.node.tryGetContext('stage'),
+    });
 
     const vpc = new ec2.Vpc(this, 'VPC', {
       natGateways: 1,
@@ -56,35 +56,32 @@ export class SwapImpairedStack extends Stack {
         {
           name: 'public',
           subnetType: ec2.SubnetType.PUBLIC,
-        }
-      ]
+        },
+      ],
     });
 
-    const self = this;
-
     const divergeWith = {
-      [Branch.Reset]: () => self.onResetBranch(),
-      [Branch.Naive]: () => self.onNaiveBranch(vpc),
-      [Branch.LinkSwap]: () => self.onLinkSwapBranch(vpc),
-      [Branch.Surgery]: () => self.onSurgeryBranch(vpc),
-    }
+      [Branch.Reset]: () => this.onResetBranch(),
+      [Branch.Naive]: () => this.onNaiveBranch(vpc),
+      [Branch.LinkSwap]: () => this.onLinkSwapBranch(vpc),
+      [Branch.Surgery]: () => this.onSurgeryBranch(vpc),
+    };
 
     // so we can deploy each branch at a time
     divergeWith[branch]();
   }
 
   onResetBranch() {
-    console.log('do nothing from here to cause the effect of "reset" by destorying partial resources');
+    console.log(
+      'do nothing from here to cause the effect of "reset" by destorying partial resources'
+    );
   }
 
   // to daemonstrate that unfortunately, this approach result in 503
   onNaiveBranch(vpc: ec2.Vpc) {
     const stage: StageForNaive = this.node.tryGetContext('stage');
 
-    const {
-      Stage_0_StartWithPort3000,
-      Stage_1_ChangePortTo80,
-    } = StageForNaive;
+    const { Stage_0_StartWithPort3000, Stage_1_ChangePortTo80 } = StageForNaive;
 
     const port = {
       [Stage_0_StartWithPort3000]: '3000',
@@ -105,19 +102,17 @@ export class SwapImpairedStack extends Stack {
   onLinkSwapBranch(vpc: ec2.Vpc) {
     const stage: StageForLinkSwap = this.node.tryGetContext('stage');
 
-    const {
-      Stage_0_StartWithPort3000,
-      Stage_1_ChangePortTo80,
-    } = StageForLinkSwap;
+    const { Stage_0_StartWithPort3000, Stage_1_ChangePortTo80 } =
+      StageForLinkSwap;
 
     const { port, specifyVpcLink } = {
       [Stage_0_StartWithPort3000]: {
         port: '3000',
-        specifyVpcLink: false
+        specifyVpcLink: false,
       },
       [Stage_1_ChangePortTo80]: {
         port: '80',
-        specifyVpcLink: true
+        specifyVpcLink: true,
       },
     }[stage];
 
@@ -171,7 +166,7 @@ export class SwapImpairedStack extends Stack {
       });
     }
 
-    let gatewayToFargate: GatewayToFargate = {
+    const gatewayToFargate: GatewayToFargate = {
       [Stage_0_StartWithPort3000]: oldGW!,
       [Stage_1_Prepare]: oldGW!,
       [Stage_2_FreeResource]: oldGW!,
