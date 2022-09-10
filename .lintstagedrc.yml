@@ -1,0 +1,3 @@
+# using binary from the git root `git rev-parse --show-toplevel`
+
+"*.{ts,js}": node_modules/eslint/bin/eslint.js --fix

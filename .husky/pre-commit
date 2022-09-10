@@ -1,0 +1,6 @@
+#!/usr/bin/env sh
+. "$(dirname -- "$0")/_/husky.sh"
+
+# starting from the git root `git rev-parse --show-toplevel`
+
+node_modules/lint-staged/bin/lint-staged.js
