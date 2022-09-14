@@ -7,9 +7,9 @@ services:
       POSTGRES_PASSWORD: postgres
   update-record:
     build:
-      context: ../
+      context: .
       # relative from context
-      dockerfile: ./tests/update-record/Dockerfile
+      dockerfile: ./update-record/tests/Dockerfile
     links:
       - "postgres"
   debug:

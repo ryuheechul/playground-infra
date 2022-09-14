@@ -1,11 +1,10 @@
-import { describe, expect, test, beforeEach, afterEach } from '@jest/globals';
 import {
   healthCheck,
   provisionTable,
   dropTable,
   update,
-} from './crucial-commands';
-import { DBClient } from './db-client';
+} from '../crucial-commands';
+import { DBClient } from '../db-client';
 
 async function expectNotToThrowError(fn: Promise<any>) {
   return expect(fn).resolves.not.toThrowError();
