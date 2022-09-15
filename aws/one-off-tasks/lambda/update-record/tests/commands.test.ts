@@ -1,39 +1,34 @@
-import {
-  healthCheck,
-  provisionTable,
-  dropTable,
-  update,
-} from '../crucial-commands';
+import { genCommands } from '../crucial-commands';
 import { DBClient } from '../db-client';
 
 async function expectNotToThrowError(fn: Promise<any>) {
   return expect(fn).resolves.not.toThrowError();
 }
 
-describe('crucial-commands module', () => {
-  const client = new DBClient(async () => {
-    return {
-      port: 5432,
-      host: 'postgres',
-      user: 'postgres',
-      password: 'postgres',
-      database: 'postgres',
-    };
-  });
+const client = new DBClient({
+  port: 5432,
+  host: 'postgres',
+  user: 'postgres',
+  password: 'postgres',
+  database: 'postgres',
+});
 
+const { update, healthCheck, provisionTable, dropTable } = genCommands(client);
+
+describe('crucial-commands module', () => {
   beforeEach(async () => {
-    await provisionTable(client);
+    await provisionTable();
   });
 
   afterEach(async () => {
-    await dropTable(client);
+    await dropTable();
   });
 
   test('update', async () => {
-    await expectNotToThrowError(healthCheck(client));
+    await expectNotToThrowError(healthCheck());
 
     const numberToChange = 42;
-    const result = await update(client, 1, numberToChange);
+    const result = await update(1, numberToChange);
 
     expect(result).toBe(numberToChange);
   });

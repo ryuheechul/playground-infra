@@ -195,7 +195,7 @@ function createStepFunction(scope: Construct, fn: lambda.Function) {
   });
 }
 
-export class GatewayForStepfunction extends Construct {
+export class GatewayForStepFunction extends Construct {
   public apiKeyId: string;
   public endpoint: string;
   constructor(scope: Construct, id: string, stateMachine: sfn.IStateMachine) {

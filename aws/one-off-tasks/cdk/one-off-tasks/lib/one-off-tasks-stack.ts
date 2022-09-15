@@ -6,7 +6,7 @@ import * as secretsManager from 'aws-cdk-lib/aws-secretsmanager';
 import {
   CreateTable,
   HandleUpdate,
-  GatewayForStepfunction,
+  GatewayForStepFunction,
 } from './constructs';
 import { CfnOutput } from 'aws-cdk-lib';
 
@@ -97,7 +97,7 @@ export class OneOffTasksStack extends cdk.Stack {
       vpc,
     });
 
-    const gw = new GatewayForStepfunction(this, 'GWForSF', stateMachine);
+    const gw = new GatewayForStepFunction(this, 'GWForSF', stateMachine);
 
     new CfnOutput(this, 'ApiEndpoint', {
       value: gw.endpoint,

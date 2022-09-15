@@ -1,21 +1,26 @@
 import { provideConnectionProps } from './db-info';
 import { DBClient } from './db-client';
-import { update, healthCheck, provisionTable } from './crucial-commands';
+import { genCommands } from './crucial-commands';
 
-export async function onEvent(event) {
+interface Event {
+  numberToChange: number;
+}
+
+export async function onEvent(event: Event) {
   console.info('Started with event: ', { event });
 
   const { numberToChange } = event;
 
-  const client = new DBClient(provideConnectionProps);
+  const client = new DBClient(await provideConnectionProps());
+  const { update, healthCheck, provisionTable } = genCommands(client);
 
   // you may or may not need these calls in real app
-  await healthCheck(client);
+  await healthCheck();
 
   // this actually should move to ../create-table if this was a real app, but it's ok for testing like this
-  await provisionTable(client);
+  await provisionTable();
 
   return {
-    numberAfterChange: await update(client, 1, numberToChange),
+    numberAfterChange: await update(1, numberToChange),
   };
 }

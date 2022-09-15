@@ -18,7 +18,7 @@ cdk:
   WORKDIR /opt/app
 
   RUN mkdir -p /asset-input
-  RUN apt update && apt install -y curl
+  RUN apt update && apt install -y curl make
   RUN npm i -g aws-cdk
 
   ENV DOCKERVERSION=20.10.17
@@ -83,7 +83,12 @@ deploy-prep:
   COPY --dir +npm-cache/node_modules ./cdk/one-off-tasks/
   COPY +npm-cache/package-lock.json ./cdk/one-off-tasks/
 
-  # run tests before deploy
+  # run cdk tests before deploy
+  WITH DOCKER --load earthly_cdk:latest=+cdk --pull public.ecr.aws/sam/build-nodejs16.x
+    RUN docker-compose -f docker-compose.cdk.yml run --entrypoint make --rm cdk -- test
+  END
+
+  # run lambda tests before deploy
   WITH DOCKER --pull postgres:14.5 --pull public.ecr.aws/lambda/nodejs:16
     RUN cd lambda && make tests
   END

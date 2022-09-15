@@ -16,12 +16,12 @@ Technologies belows are used to make that happen
 - https://github.com/okonet/lint-staged
 
 1. Husky gets installed when `npm i` via "prepare" stanza in `package.json`.
-2. `./.husky/pre-commit` gets called when trying to `git commit` everytime
-3. lint-staged and other hooks are called
-4. lint-staged use calls `eslint --fix`
-5. prettier is integrated to `eslint` as a plugin
+2. `./.husky/pre-commit` gets called when trying to `git commit` every time
+3. `lint-staged` and other hooks are called
+4. `lint-staged` use calls `eslint --fix`
+5. `prettier` is integrated to `eslint` as a plugin
 
-Edit these files to make changes on the behaivours
+Edit these files to make changes:
 - [.eslintrc.cjs](./.eslintrc.cjs)
 - [.lintstagedrc.yml](./.lintstagedrc.yml)
 - [.prettierrc.yml](./.prettierrc.yml)
