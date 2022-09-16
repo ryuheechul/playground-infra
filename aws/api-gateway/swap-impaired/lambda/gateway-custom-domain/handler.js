@@ -14,9 +14,8 @@ exports.onCreate = async (domainName, hostedZoneId) => {
 
   try {
     await justDeleteInsteadOfWaiting(domainName, hostedZoneId);
-  }
-  // just prevent exceptions
-  catch (_e) {
+  } catch (_e) {
+    // just prevent exceptions
     // do nothing
   }
 
@@ -30,7 +29,7 @@ exports.onCreate = async (domainName, hostedZoneId) => {
   console.info(`Success: ${domainName} detected to be absent in custom domain`);
 
   return {
-    PhysicalResourceId: genPhysicalResourceId(domainName)
+    PhysicalResourceId: genPhysicalResourceId(domainName),
   };
 };
 
@@ -38,6 +37,6 @@ exports.onNoop = async (domainName, hostedZoneId, requestType) => {
   console.info(`Noop on ${requestType}`);
 
   return {
-    PhysicalResourceId: genPhysicalResourceId(domainName)
+    PhysicalResourceId: genPhysicalResourceId(domainName),
   };
 };

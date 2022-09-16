@@ -26,19 +26,21 @@ const listRecordSets = async (hostedZoneId) => {
   var params = {
     HostedZoneId: hostedZoneId,
     // otherwise default is only 100
-    MaxItems: "300",
+    MaxItems: '300',
   };
   console.info('Querying RecordSets from %s...', hostedZoneId);
   const data = await listResourceRecordSets(params);
 
   // console.info('RecordSets: %s', '', data);
   return data.ResourceRecordSets;
-}
+};
 
 const fetchRecordSet = async (hostedZoneId, domainName) => {
-  console.log('fetchRecordSet', hostedZoneId, domainName)
+  console.log('fetchRecordSet', hostedZoneId, domainName);
   const resourceRecordSets = await listRecordSets(hostedZoneId);
-  const filtered = resourceRecordSets.filter(rs => rs.Name == `${domainName}.`);
+  const filtered = resourceRecordSets.filter(
+    (rs) => rs.Name == `${domainName}.`
+  );
 
   if (filtered.length === 0) {
     return null;
@@ -52,17 +54,19 @@ const fetchRecordSet = async (hostedZoneId, domainName) => {
   }
 
   return one;
-}
+};
 
 const deleteRecordSet = async (hostedZoneId, recordSet) => {
   const params = {
     ChangeBatch: {
-      Changes: [{
-        Action: "DELETE",
-        ResourceRecordSet: recordSet
-      }],
+      Changes: [
+        {
+          Action: 'DELETE',
+          ResourceRecordSet: recordSet,
+        },
+      ],
     },
-    HostedZoneId: hostedZoneId
+    HostedZoneId: hostedZoneId,
   };
   console.info('Deleting RecordSet %s ...', hostedZoneId, params);
 
@@ -80,14 +84,12 @@ exports.justDeleteInsteadOfWaiting = async (target, hostedZoneId) => {
   }
 
   console.info('delete from route53');
-  console.log(
-    await deleteRecordSet(hostedZoneId, recordSet)
-  );
+  console.log(await deleteRecordSet(hostedZoneId, recordSet));
 
   console.info('delete from API Gateway');
   console.log(
     await deleteDomainName({
-      DomainName: target
+      DomainName: target,
     })
   );
-}
+};

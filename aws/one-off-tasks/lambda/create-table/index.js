@@ -6,27 +6,21 @@ const onNoop = async (requestType) => {
   console.info(`Noop on ${requestType}`);
 
   return {
-    PhysicalResourceId: 'noop'
+    PhysicalResourceId: 'noop',
   };
 };
 
-const createHandler = ({
-  RequestType,
-}) => onNoop(RequestType);
+const createHandler = ({ RequestType }) => onNoop(RequestType);
 
-const updateHandler = ({
-  RequestType,
-}) => onNoop(RequestType);
+const updateHandler = ({ RequestType }) => onNoop(RequestType);
 
-const deleteHandler = ({
-  RequestType,
-}) => onNoop(RequestType);
+const deleteHandler = ({ RequestType }) => onNoop(RequestType);
 
 const eventHandlers = {
   Create: createHandler,
   Update: updateHandler,
   Delete: deleteHandler,
-}
+};
 
 exports.onEvent = async (event) => {
   console.info('Started with event: ', { event });
@@ -38,4 +32,4 @@ exports.onEvent = async (event) => {
   }
 
   return await eventHandler(event);
-}
+};

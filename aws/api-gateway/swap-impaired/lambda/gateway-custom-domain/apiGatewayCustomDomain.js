@@ -9,14 +9,14 @@ const getDomainNames = util.promisify(
   apigatewayv2.getDomainNames.bind(apigatewayv2)
 );
 
-const _delay = ms => new Promise(resolve => setTimeout(resolve, ms))
+const _delay = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
 
 async function isTargetAbsent(target) {
-  const domainNames = (await getDomainNames())
-    .Items
-    .map(({ DomainName }) => DomainName);
+  const domainNames = (await getDomainNames()).Items.map(
+    ({ DomainName }) => DomainName
+  );
 
-  const filtered = domainNames.filter(domain => domain === target);
+  const filtered = domainNames.filter((domain) => domain === target);
 
   return filtered.length === 0;
 }
@@ -26,7 +26,7 @@ async function isTargetAbsent(target) {
 // false: no more retry, so giving up
 async function runUntilTargetAbsent(target, retryCount, delay) {
   if (retryCount < 1) {
-    console.warn('warning: giving up since retry is used up')
+    console.warn('warning: giving up since retry is used up');
     return false;
   }
 
@@ -46,6 +46,6 @@ exports.waitUntilGone = async (target, maxRetry, intervalS) => {
   return await runUntilTargetAbsent(
     target,
     maxRetry,
-    async () => await _delay(1000 * intervalS),
+    async () => await _delay(1000 * intervalS)
   );
-}
+};

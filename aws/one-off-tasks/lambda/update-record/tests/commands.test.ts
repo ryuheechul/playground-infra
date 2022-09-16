@@ -1,6 +1,7 @@
 import { genCommands } from '../crucial-commands';
 import { DBClient } from '../db-client';
 
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
 async function expectNotToThrowError(fn: Promise<any>) {
   return expect(fn).resolves.not.toThrowError();
 }
